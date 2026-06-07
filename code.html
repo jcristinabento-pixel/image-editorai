@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Loader with Filters and Magnifier</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f2f5;
+        }
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .img-container {
+            position: relative;
+            display: inline-block;
+        }
+        #preview {
+            max-width: 500px;
+            max-height: 500px;
+            display: none;
+        }
+        .magnifier {
+            position: absolute;
+            border: 3px solid #000;
+            border-radius: 50%;
+            cursor: none;
+            width: 100px;
+            height: 100px;
+            display: none;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <input type="file" id="upload" accept="image/*">
+        
+        <label>Brightness: <input type="range" id="brightness" min="0" max="200" value="100">%</label>
+        <label>Contrast: <input type="range" id="contrast" min="0" max="200" value="100">%</label>
+        <label>Grayscale: <input type="range" id="grayscale" min="0" max="100" value="0">%</label>
+        
+        <button id="saveBtn">Save Image</button>
+    </div>
+
+    <div class="img-container" id="container">
+        <img id="preview" alt="Uploaded Image">
+        <div id="glass" class="magnifier"></div>
+    </div>
+
+    <script>
+        const upload = document.getElementById('upload');
+        const preview = document.getElementById('preview');
+        const glass = document.getElementById('glass');
+        const container = document.getElementById('container');
+        
+        const brightness = document.getElementById('brightness');
+        const contrast = document.getElementById('contrast');
+        const grayscale = document.getElementById('grayscale');
+        const saveBtn = document.getElementById('saveBtn');
+
+        upload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    preview.src = event.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function applyFilters() {
+            const filterString = `brightness(${brightness.value}%) contrast(${contrast.value}%) grayscale(${grayscale.value}%)`;
+            preview.style.filter = filterString;
+            glass.style.filter = filterString;
+        }
+
+        brightness.addEventListener('input', applyFilters);
+        contrast.addEventListener('input', applyFilters);
+        grayscale.addEventListener('input', applyFilters);
+
+        container.addEventListener('mousemove', moveMagnifier);
+        container.addEventListener('mouseenter', () => { if(preview.src) glass.style.display = 'block'; });
+        container.addEventListener('mouseleave', () => glass.style.display = 'none');
+
+        function moveMagnifier(e) {
+            if (!preview.src) return;
+            
+            const rect = preview.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (x < 0 || x > rect.width || y < 0 || y > rect.height) {
+                glass.style.display = 'none';
+                return;
+            }
+            
+            glass.style.display = 'block';
+            glass.style.left = (x - glass.offsetWidth / 2) + 'px';
+            glass.style.top = (y - glass.offsetHeight / 2) + 'px';
+            
+            glass.style.backgroundImage = `url('${preview.src}')`;
+            glass.style.backgroundSize = `${rect.width * 2}px ${rect.height * 2}px`;
+            glass.style.backgroundPosition = `-${(x * 2) - glass.offsetWidth / 2}px -${(y * 2) - glass.offsetHeight / 2}px`;
+        }
+
+        saveBtn.addEventListener('click', () => {
+            if (!preview.src) return;
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = preview.naturalWidth;
+            canvas.height = preview.naturalHeight;
+            
+            ctx.filter = `brightness(${brightness.value}%) contrast(${contrast.value}%) grayscale(${grayscale.value}%)`;
+            ctx.drawImage(preview, 0, 0, canvas.width, canvas.height);
+            
+            const link = document.createElement('a');
+            link.download = 'edited-image.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+    </script>
+
+</body>
+</html>
